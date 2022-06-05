@@ -29,4 +29,6 @@ if __name__ == "__main__":
     end = time.time()
 
     print(res)
-    print(f"Got {len(urls)} pings in {end-start}s")
+    print(
+        f"Got {len(urls)} pings in {end-start}s. Sum of elapsed (s): {sum(res.values())/1000}"
+    )
