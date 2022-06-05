@@ -1,7 +1,8 @@
 import hashlib
 import time
 from random import randbytes
-from typing import Optional, List
+from typing import Optional, List, Set
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 def mine(target_len: int) -> Optional[bytes]:
@@ -52,12 +53,35 @@ def mine_multiple(successes_desired: int, target_len: int) -> List[bytes]:
     return successes
 
 
+def mine_multiple_multiproc(successes_desired: int, target_len: int) -> List[bytes]:
+    """Generate `success_desired` strings whose sha256 hash ends with `target_len` zeroes.
+
+    This is the function that we want to modify to speed up our mining!
+
+    :param successes_desired: the number of strings to find
+    :param target_len: aka difficulty. How many zeroes does a success need to end with?
+    :return: a list of length `successes_desired` successful strings
+    """
+    successes: Set[bytes] = set()
+    with ProcessPoolExecutor() as pool:
+        tasks = [pool.submit(mine, target_len) for _ in range(successes_desired)]
+        for future in tasks:
+            out = future.result()
+            if out is not None and out not in successes:
+                successes.add(out)
+            else:
+                tasks.append(pool.submit(mine, target_len))
+
+    return list(successes)
+
+
 if __name__ == "__main__":
     start = time.time()
     target_len = 4
 
     successes_desired = 100
-    successes = mine_multiple(successes_desired, target_len)
+    #successes = mine_multiple(successes_desired, target_len)
+    successes = mine_multiple_multiproc(successes_desired, target_len)
 
     # Let's make sure our workers didn't misbehave!
     success = "0" * target_len
@@ -71,8 +95,12 @@ if __name__ == "__main__":
     print(f"Generated {len(successes)} hashes in {end-start}s")
 
     if len(successes) < successes_desired:
-        raise AssertionError(f"Wanted {successes_desired} successes but only got {len(successes)}")
+        raise AssertionError(
+            f"Wanted {successes_desired} successes but only got {len(successes)}"
+        )
 
     # Make sure no one is sneaky and tries to return the same result multiple times
     if len(set(successes)) < successes_desired:
-        raise AssertionError("Successes weren't unique. What're you trying to pull here...")
+        raise AssertionError(
+            "Successes weren't unique. What're you trying to pull here..."
+        )

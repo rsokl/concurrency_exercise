@@ -35,3 +35,5 @@ if __name__ == "__main__":
     print(
         f"Got {len(urls)} pings in {end-start}s.\nSum of elapsed (s): {sum(res.values())/1000}\nMax elapsed (s): {max(res.values())/1000}"
     )
+    print(list(res))
+    print(urls)
